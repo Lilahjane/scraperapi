@@ -3,7 +3,7 @@ from recipe_scrapers import scrape_html
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app, origins='*')
 
 @app.route('/scrape-recipe', methods=['POST'])
 def scrape_recipe():
