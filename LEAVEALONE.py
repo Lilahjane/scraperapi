@@ -35,51 +35,39 @@ def safe_scrape(scraper, func, default=""):
     ):
         return default
 
-@app.route('/scrape-recipe', methods=['POST'])
-def scrape_recipe():
+def scrape_single_recipe(url):
     try:
-        data = request.get_json()
-        url = data.get('url')
-
-        if not url:
-            return jsonify({"error": "No URL provided"}), 400
-
         scraper = scrape_html(html=None, org_url=url, online=True, supported_only=True)
 
-        response_data = {
-            "author": safe_scrape(scraper, scraper.author),
-            "canonical_url": safe_scrape(scraper, scraper.canonical_url),
-            "category": safe_scrape(scraper, scraper.category),
-            "cook_time": safe_scrape(scraper, scraper.cook_time),
-            "cooking_method": safe_scrape(scraper, scraper.cooking_method),
-            "cuisine": safe_scrape(scraper, scraper.cuisine),
-            "description": safe_scrape(scraper, scraper.description),
-            "dietary_restrictions": safe_scrape(scraper, scraper.dietary_restrictions),
-            "host": safe_scrape(scraper, scraper.host),
-            "image": safe_scrape(scraper, scraper.image),
+        return {
+            "author": str(safe_scrape(scraper, scraper.author)),
+            "canonical_url": str(safe_scrape(scraper, scraper.canonical_url)),
+            "category": str(safe_scrape(scraper, scraper.category)),
+            "cook_time": str(safe_scrape(scraper, scraper.cook_time)),
+            "cooking_method": str(safe_scrape(scraper, scraper.cooking_method)),
+            "cuisine": str(safe_scrape(scraper, scraper.cuisine)),
+            "description": str(safe_scrape(scraper, scraper.description)),
+            "dietary_restrictions": str(safe_scrape(scraper, scraper.dietary_restrictions)),
+            "host": str(safe_scrape(scraper, scraper.host)),
+            "image": str(safe_scrape(scraper, scraper.image)),
             "ingredients": safe_scrape(scraper, scraper.ingredients, default=[]),
-            # "instructions": safe_scrape(scraper, scraper.instructions),
             "instructions_list": safe_scrape(scraper, scraper.instructions_list, default=[]),
             "keywords": safe_scrape(scraper, scraper.keywords, default=[]),
             "language": safe_scrape(scraper, scraper.language),
-            #"links": safe_scrape(scraper, scraper.links, default=[]),
             "nutrients": safe_scrape(scraper, scraper.nutrients, default={}),
-            "prep_time": safe_scrape(scraper, scraper.prep_time),
-            "ratings": safe_scrape(scraper, scraper.ratings),
-            "ratings_count": safe_scrape(scraper, scraper.ratings_count),
+            "prep_time": str(safe_scrape(scraper, scraper.prep_time)),
+            "ratings": str(safe_scrape(scraper, scraper.ratings)),
+            "ratings_count": str(safe_scrape(scraper, scraper.ratings_count)),
             "reviews": safe_scrape(scraper, scraper.reviews, default=[]),
-            "site_name": safe_scrape(scraper, scraper.site_name),
-            "title": safe_scrape(scraper, scraper.title),
-            "total_time": safe_scrape(scraper, scraper.total_time),
-            "yields": safe_scrape(scraper, scraper.yields),
+            "site_name": str(safe_scrape(scraper, scraper.site_name)),
+            "title": str(safe_scrape(scraper, scraper.title)),
+            "total_time": str(safe_scrape(scraper, scraper.total_time)),
+            "yields": str(safe_scrape(scraper, scraper.yields)),
             "url": url,
             "error": None
         }
-
-        return jsonify(response_data), 200
-
     except Exception as e:
-        return jsonify({
+        return {
             "error": str(e),
             "author": "",
             "canonical_url": "",
@@ -89,16 +77,12 @@ def scrape_recipe():
             "cuisine": "",
             "description": "",
             "dietary_restrictions": "",
-            # "equipment": "",
             "host": "",
             "image": "",
-            # "ingredient_groups": [],
             "ingredients": [],
-            "instructions": "",
             "instructions_list": [],
             "keywords": [],
             "language": "",
-            #"links": [],
             "nutrients": {},
             "prep_time": "",
             "ratings": "",
@@ -109,6 +93,46 @@ def scrape_recipe():
             "total_time": "",
             "yields": "",
             "url": url
+        }
+
+@app.route('/scrape-recipe', methods=['POST'])
+def scrape_recipe():
+    try:
+        data = request.get_json()
+        url = data.get('url')
+
+        if not url:
+            return jsonify({"error": "No URL provided"}), 400
+
+        result = scrape_single_recipe(url)
+        return jsonify(result), 200 if not result["error"] else 500
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "url": url if 'url' in locals() else None
+        }), 500
+
+@app.route('/bulk-scrape', methods=['POST'])
+def bulk_scrape():
+    try:
+        data = request.get_json()
+        urls = data.get('urls', [])
+
+        if not urls or not isinstance(urls, list):
+            return jsonify({"error": "No URLs array provided"}), 400
+
+        results = []
+        for url in urls:
+            if url:  # Only process non-empty URLs
+                results.append(scrape_single_recipe(url))
+
+        return jsonify({"results": results}), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "results": []
         }), 500
 
 if __name__ == "__main__":
